@@ -30,7 +30,7 @@ Vite + React 18 + TypeScript + Sass.
 ```bash
 npm install
 npm run dev      # http://localhost:5173
-npm test         # game engine tests (vitest)
+npm test         # rules, question loading, and full-game tests (vitest)
 npm run build
 npm run deploy   # GitHub Pages
 ```

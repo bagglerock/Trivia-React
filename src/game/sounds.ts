@@ -26,6 +26,7 @@ export const setMuted = (value: boolean) => {
 
 /** Browsers only allow audio after a user gesture; call this from click/keydown handlers. */
 export const unlockAudio = () => {
+  if (typeof AudioContext === 'undefined') return; // no Web Audio: play silently
   if (!ctx) ctx = new AudioContext();
   if (ctx.state === 'suspended') ctx.resume();
 };
