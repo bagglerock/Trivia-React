@@ -30,7 +30,10 @@ export interface GameState {
   settings: Settings;
   questions: Question[];
   index: number;
-  questionStartedAt: number | null;
+  /** performance.now() when the current phase began, shifted forward by any time spent paused. */
+  phaseStartedAt: number | null;
+  /** Non-null while paused: when the pause began. */
+  pausedAt: number | null;
   /** results[questionIndex][playerIndex]; null means no answer before time ran out. */
   results: (PlayerAnswer | null)[][];
   usingBackupQuestions: boolean;

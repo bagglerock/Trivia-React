@@ -10,15 +10,18 @@ export const REVEAL_MS = 6000;
 /** `inputBlocked` stops game keys while an overlay (e.g. the controls help) is open. */
 export const useGame = (inputBlocked = false) => {
   const [state, dispatch] = useReducer(reducer, undefined, () => initialState());
-  const { phase, settings, index, questionStartedAt } = state;
+  const { phase, settings, phaseStartedAt, pausedAt } = state;
+  const paused = pausedAt !== null;
 
-  // Each load gets an id so a slow response from an abandoned game is ignored.
-  const loadId = useRef(0);
+  // Only one load at a time; quitting or restarting cancels the one in flight so it can't hog the API's rate limit.
+  const loading = useRef<AbortController | null>(null);
   const load = useCallback((s: Settings) => {
-    const id = ++loadId.current;
-    loadQuestions(s)
-      .then(({ questions, usingBackup }) => id === loadId.current && dispatch({ type: 'LOADED', questions, usingBackup }))
-      .catch(e => id === loadId.current && dispatch({ type: 'LOAD_FAILED', error: e.message }));
+    loading.current?.abort();
+    const controller = new AbortController();
+    loading.current = controller;
+    loadQuestions(s, controller.signal)
+      .then(({ questions, usingBackup }) => !controller.signal.aborted && dispatch({ type: 'LOADED', questions, usingBackup, now: performance.now() }))
+      .catch(e => !controller.signal.aborted && dispatch({ type: 'LOAD_FAILED', error: e.message }));
   }, []);
 
   const start = useCallback(
@@ -30,23 +33,34 @@ export const useGame = (inputBlocked = false) => {
   );
   const rematch = useCallback(() => start(settings), [start, settings]);
   const newGame = useCallback(() => {
-    loadId.current++;
+    loading.current?.abort();
     dispatch({ type: 'NEW_GAME' });
   }, []);
+  const pause = useCallback(() => dispatch({ type: 'PAUSE', now: performance.now() }), []);
+  const resume = useCallback(() => dispatch({ type: 'RESUME', now: performance.now() }), []);
+  const next = useCallback(() => dispatch({ type: 'NEXT', now: performance.now() }), []);
 
-  // Phase timers.
+  // Auto-pause if you switch away from the tab mid-game.
   useEffect(() => {
+    const onHide = () => document.hidden && pause();
+    document.addEventListener('visibilitychange', onHide);
+    return () => document.removeEventListener('visibilitychange', onHide);
+  }, [pause]);
+
+  // Phase timers, measured from when the phase started (which a pause pushes back).
+  useEffect(() => {
+    if (paused || phaseStartedAt === null) return;
+    const after = (ms: number, fn: () => void) => window.setTimeout(fn, Math.max(0, ms - (performance.now() - phaseStartedAt)));
     let timer: number | undefined;
     if (phase === 'intro') {
-      timer = window.setTimeout(() => dispatch({ type: 'BEGIN_QUESTION', now: performance.now() }), INTRO_MS);
-    } else if (phase === 'question' && questionStartedAt !== null) {
-      const remaining = settings.secondsPerQuestion * 1000 - (performance.now() - questionStartedAt);
-      timer = window.setTimeout(() => dispatch({ type: 'TIME_UP' }), Math.max(0, remaining));
+      timer = after(INTRO_MS, () => dispatch({ type: 'BEGIN_QUESTION', now: performance.now() }));
+    } else if (phase === 'question') {
+      timer = after(settings.secondsPerQuestion * 1000, () => dispatch({ type: 'TIME_UP', now: performance.now() }));
     } else if (phase === 'reveal') {
-      timer = window.setTimeout(() => dispatch({ type: 'NEXT' }), REVEAL_MS);
+      timer = after(REVEAL_MS, next);
     }
     return () => window.clearTimeout(timer);
-  }, [phase, index, questionStartedAt, settings.secondsPerQuestion]);
+  }, [phase, phaseStartedAt, paused, settings.secondsPerQuestion, next]);
 
   // Keyboard: both players share one keyboard.
   useEffect(() => {
@@ -54,6 +68,21 @@ export const useGame = (inputBlocked = false) => {
       if (inputBlocked) return;
       if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
+
+      if (paused) {
+        if (e.code === 'Escape' || e.code === 'Space' || e.code === 'Enter') {
+          e.preventDefault();
+          resume();
+        } else if (e.code === 'KeyQ') {
+          newGame();
+        }
+        return;
+      }
+
+      if (e.code === 'Escape') {
+        pause();
+        return;
+      }
 
       if (phase === 'question') {
         const hit = keyToAnswer(e.code, settings.playerCount);
@@ -64,27 +93,25 @@ export const useGame = (inputBlocked = false) => {
         }
       } else if (phase === 'reveal' && (e.code === 'Space' || e.code === 'Enter')) {
         e.preventDefault();
-        dispatch({ type: 'NEXT' });
+        next();
       } else if (phase === 'final' && e.code === 'Enter') {
         e.preventDefault();
         rematch();
       }
-
-      if (e.code === 'Escape' && phase !== 'setup' && phase !== 'final') {
-        if (window.confirm('Quit this game?')) newGame();
-      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [phase, settings.playerCount, rematch, newGame, inputBlocked]);
+  }, [phase, paused, settings.playerCount, rematch, newGame, pause, resume, next, inputBlocked]);
 
   return {
     state,
     start,
     answer: useCallback((player: number, choice: number) => dispatch({ type: 'ANSWER', player, choice, now: performance.now() }), []),
-    next: useCallback(() => dispatch({ type: 'NEXT' }), []),
+    next,
     rematch,
     newGame,
+    pause,
+    resume,
   };
 };
 

@@ -14,13 +14,13 @@ interface Props {
 
 /** Covers one question from "Question 3 of 10" through the answer reveal. */
 export const RoundScreen = ({ state, onAnswer, onNext }: Props) => {
-  const { phase, settings, questions, index, questionStartedAt, results } = state;
+  const { phase, settings, questions, index, phaseStartedAt, pausedAt, results } = state;
   const question = questions[index];
   const answers = results[index];
-  const now = useNow(phase === 'question');
+  const now = useNow(phase === 'question' && pausedAt === null);
 
   const durationMs = settings.secondsPerQuestion * 1000;
-  const elapsed = phase === 'question' && questionStartedAt !== null ? now - questionStartedAt : durationMs;
+  const elapsed = phase === 'question' && phaseStartedAt !== null ? Math.max(0, now - phaseStartedAt) : durationMs;
   const fraction = Math.max(0, 1 - elapsed / durationMs);
   const points = pointsAt(elapsed, durationMs);
   const solo = settings.playerCount === 1;

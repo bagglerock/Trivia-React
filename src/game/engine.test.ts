@@ -7,7 +7,7 @@ const q = (correctIndex: number): Question => ({ category: 'Test', difficulty: '
 
 const started = (playerCount: 1 | 2 = 2, questions = [q(0), q(1)]): GameState => {
   let s = reducer(initialState(), { type: 'START', settings: { ...DEFAULT_SETTINGS, playerCount, secondsPerQuestion: 10 } });
-  s = reducer(s, { type: 'LOADED', questions, usingBackup: false });
+  s = reducer(s, { type: 'LOADED', questions, usingBackup: false, now: 0 });
   return reducer(s, { type: 'BEGIN_QUESTION', now: 1000 });
 };
 
@@ -41,7 +41,7 @@ describe('reducer', () => {
     let s = started();
     s = reducer(s, { type: 'ANSWER', player: 0, choice: 0, now: 1000 });
     expect(visibleScores(s)).toEqual([0, 0]);
-    s = reducer(s, { type: 'TIME_UP' });
+    s = reducer(s, { type: 'TIME_UP', now: 0 });
     expect(visibleScores(s)).toEqual([MAX_POINTS, 0]);
   });
 
@@ -49,7 +49,7 @@ describe('reducer', () => {
     let s = started(1);
     s = reducer(s, { type: 'ANSWER', player: 1, choice: 0, now: 1500 });
     expect(s.results[0]).toEqual([null]);
-    s = reducer(s, { type: 'TIME_UP' });
+    s = reducer(s, { type: 'TIME_UP', now: 0 });
     s = reducer(s, { type: 'ANSWER', player: 0, choice: 0, now: 1500 });
     expect(s.results[0]).toEqual([null]);
   });
@@ -57,13 +57,36 @@ describe('reducer', () => {
   it('runs through to the final screen', () => {
     let s = started(1);
     s = reducer(s, { type: 'ANSWER', player: 0, choice: 0, now: 1000 });
-    s = reducer(s, { type: 'NEXT' });
+    s = reducer(s, { type: 'NEXT', now: 0 });
     expect(s).toMatchObject({ phase: 'intro', index: 1 });
     s = reducer(s, { type: 'BEGIN_QUESTION', now: 0 });
     s = reducer(s, { type: 'ANSWER', player: 0, choice: 1, now: 2500 });
-    s = reducer(s, { type: 'NEXT' });
+    s = reducer(s, { type: 'NEXT', now: 0 });
     expect(s.phase).toBe('final');
     expect(statsFor(s, 0)).toMatchObject({ correct: 2, score: MAX_POINTS + pointsAt(2500, 10000), fastestMs: 0 });
+  });
+});
+
+describe('pause', () => {
+  it('freezes the clock: time spent paused does not cost points', () => {
+    let s = started(1);
+    s = reducer(s, { type: 'PAUSE', now: 2000 });
+    s = reducer(s, { type: 'ANSWER', player: 0, choice: 0, now: 2500 });
+    expect(s.results[0]).toEqual([null]);
+    s = reducer(s, { type: 'RESUME', now: 62000 });
+    s = reducer(s, { type: 'ANSWER', player: 0, choice: 0, now: 62000 });
+    expect(s.results[0][0]!.elapsedMs).toBe(1000);
+  });
+
+  it('ignores the timer running out while paused', () => {
+    let s = started();
+    s = reducer(s, { type: 'PAUSE', now: 2000 });
+    s = reducer(s, { type: 'TIME_UP', now: 11000 });
+    expect(s.phase).toBe('question');
+  });
+
+  it('cannot pause on the setup or final screens', () => {
+    expect(reducer(initialState(), { type: 'PAUSE', now: 0 }).pausedAt).toBeNull();
   });
 });
 

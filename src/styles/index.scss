@@ -211,6 +211,58 @@ footer {
   font-size: 1.2rem;
 }
 
+// ---- Pause ----
+
+// Freeze every CSS animation (timer shimmer, countdown, confetti) so they stay in sync with the stopped clock.
+.app.is-paused .main *,
+.app.is-paused .main *::before,
+.app.is-paused .main *::after {
+  animation-play-state: paused !important;
+}
+
+.pause-overlay {
+  // Blur hard enough that nobody can keep reading the question while paused.
+  backdrop-filter: blur(14px);
+  background: rgba(17, 17, 17, 0.6);
+}
+
+.pause {
+  width: min(440px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.1rem;
+  text-align: center;
+
+  h2 {
+    font-family: $display;
+    font-size: 3rem;
+    animation: float 2.5s ease-in-out infinite;
+  }
+
+  .big-button kbd {
+    margin-left: 0.5rem;
+    font-size: 0.8rem;
+  }
+}
+
+.pause-where {
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.pause-actions {
+  display: flex;
+  gap: 1.5rem;
+
+  .danger {
+    color: $wrong;
+  }
+  kbd {
+    font-size: 0.7rem;
+  }
+}
+
 // ---- Controls overlay ----
 
 .overlay {

@@ -80,7 +80,7 @@ export const ControlsOverlay = ({ initialPlayers, names, onClose }: Props) => {
             <kbd>M</kbd> sound on / off
           </li>
           <li>
-            <kbd>esc</kbd> quit game
+            <kbd>esc</kbd> pause
           </li>
           <li>
             <kbd>?</kbd> show / hide this

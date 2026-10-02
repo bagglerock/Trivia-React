@@ -20,12 +20,14 @@ export const pointsAt = (elapsedMs: number, durationMs: number): number => {
 
 export type Action =
   | { type: 'START'; settings: Settings }
-  | { type: 'LOADED'; questions: Question[]; usingBackup: boolean }
+  | { type: 'LOADED'; questions: Question[]; usingBackup: boolean; now: number }
   | { type: 'LOAD_FAILED'; error: string }
   | { type: 'BEGIN_QUESTION'; now: number }
   | { type: 'ANSWER'; player: number; choice: number; now: number }
-  | { type: 'TIME_UP' }
-  | { type: 'NEXT' }
+  | { type: 'TIME_UP'; now: number }
+  | { type: 'NEXT'; now: number }
+  | { type: 'PAUSE'; now: number }
+  | { type: 'RESUME'; now: number }
   | { type: 'NEW_GAME' };
 
 export const initialState = (settings: Settings = DEFAULT_SETTINGS): GameState => ({
@@ -33,14 +35,36 @@ export const initialState = (settings: Settings = DEFAULT_SETTINGS): GameState =
   settings,
   questions: [],
   index: 0,
-  questionStartedAt: null,
+  phaseStartedAt: null,
+  pausedAt: null,
   results: [],
   usingBackupQuestions: false,
   error: null,
 });
 
+const PAUSABLE = ['loading', 'intro', 'question', 'reveal'];
+
+/** Actions that move the game clock along; ignored while paused. */
+const CLOCKED = ['BEGIN_QUESTION', 'ANSWER', 'TIME_UP', 'NEXT'];
+
 export const reducer = (state: GameState, action: Action): GameState => {
+  if (state.pausedAt !== null && CLOCKED.includes(action.type)) return state;
+
   switch (action.type) {
+    case 'PAUSE':
+      if (state.pausedAt !== null || !PAUSABLE.includes(state.phase)) return state;
+      return { ...state, pausedAt: action.now };
+
+    case 'RESUME': {
+      if (state.pausedAt === null) return state;
+      const pausedFor = action.now - state.pausedAt;
+      return {
+        ...state,
+        pausedAt: null,
+        phaseStartedAt: state.phaseStartedAt === null ? null : state.phaseStartedAt + pausedFor,
+      };
+    }
+
     case 'START':
       return { ...initialState(action.settings), phase: 'loading' };
 
@@ -55,6 +79,7 @@ export const reducer = (state: GameState, action: Action): GameState => {
       return {
         ...state,
         phase: 'intro',
+        phaseStartedAt: action.now,
         questions: action.questions,
         usingBackupQuestions: action.usingBackup,
         results: action.questions.map(() => Array(state.settings.playerCount).fill(null)),
@@ -62,18 +87,18 @@ export const reducer = (state: GameState, action: Action): GameState => {
 
     case 'BEGIN_QUESTION':
       if (state.phase !== 'intro') return state;
-      return { ...state, phase: 'question', questionStartedAt: action.now };
+      return { ...state, phase: 'question', phaseStartedAt: action.now };
 
     case 'ANSWER': {
       const { player, choice, now } = action;
       const current = state.results[state.index];
       const question = state.questions[state.index];
-      if (state.phase !== 'question' || state.questionStartedAt === null) return state;
+      if (state.phase !== 'question' || state.phaseStartedAt === null) return state;
       if (player >= state.settings.playerCount || current[player] !== null) return state;
       if (choice < 0 || choice >= question.answers.length) return state;
 
       const durationMs = state.settings.secondsPerQuestion * 1000;
-      const elapsedMs = Math.min(durationMs, Math.max(0, now - state.questionStartedAt));
+      const elapsedMs = Math.min(durationMs, Math.max(0, now - state.phaseStartedAt));
       const correct = choice === question.correctIndex;
       const answer: PlayerAnswer = { choice, elapsedMs, correct, points: correct ? pointsAt(elapsedMs, durationMs) : 0 };
 
@@ -81,17 +106,18 @@ export const reducer = (state: GameState, action: Action): GameState => {
       const results = state.results.map((r, i) => (i === state.index ? updated : r));
       const everyoneAnswered = updated.every(a => a !== null);
 
-      return { ...state, results, phase: everyoneAnswered ? 'reveal' : 'question' };
+      if (!everyoneAnswered) return { ...state, results };
+      return { ...state, results, phase: 'reveal', phaseStartedAt: now };
     }
 
     case 'TIME_UP':
       if (state.phase !== 'question') return state;
-      return { ...state, phase: 'reveal' };
+      return { ...state, phase: 'reveal', phaseStartedAt: action.now };
 
     case 'NEXT':
       if (state.phase !== 'reveal') return state;
-      if (state.index >= state.questions.length - 1) return { ...state, phase: 'final' };
-      return { ...state, phase: 'intro', index: state.index + 1, questionStartedAt: null };
+      if (state.index >= state.questions.length - 1) return { ...state, phase: 'final', phaseStartedAt: action.now };
+      return { ...state, phase: 'intro', index: state.index + 1, phaseStartedAt: action.now };
 
     default:
       return state;

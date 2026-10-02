@@ -7,7 +7,8 @@ const TICK_SECONDS = 5;
 
 /** Plays sound effects in response to game state changes. */
 export const useSoundEffects = (state: GameState) => {
-  const { phase, index, questionStartedAt, settings, results } = state;
+  const { phase, index, phaseStartedAt, pausedAt, settings, results } = state;
+  const paused = pausedAt !== null;
   const current = results[index];
 
   // Audio can only start after a user gesture.
@@ -20,24 +21,28 @@ export const useSoundEffects = (state: GameState) => {
     };
   }, []);
 
-  // Intro countdown beeps.
+  // Intro countdown beeps (any still to come after a pause).
   useEffect(() => {
-    if (phase !== 'intro') return;
-    const beeps = [0, 1, 2].map(i => window.setTimeout(sounds.countdown, (INTRO_MS / 3) * i));
+    if (phase !== 'intro' || paused || phaseStartedAt === null) return;
+    const elapsed = performance.now() - phaseStartedAt;
+    const beeps = [0, 1, 2]
+      .map(i => (INTRO_MS / 3) * i - elapsed)
+      .filter(delay => delay > -50)
+      .map(delay => window.setTimeout(sounds.countdown, Math.max(0, delay)));
     return () => beeps.forEach(window.clearTimeout);
-  }, [phase, index]);
+  }, [phase, phaseStartedAt, paused]);
 
   // Question start + ticking for the last few seconds.
   useEffect(() => {
-    if (phase !== 'question' || questionStartedAt === null) return;
-    sounds.go();
-    const endsAt = questionStartedAt + settings.secondsPerQuestion * 1000;
+    if (phase !== 'question' || paused || phaseStartedAt === null) return;
+    if (performance.now() - phaseStartedAt < 200) sounds.go(); // not when resuming
+    const endsAt = phaseStartedAt + settings.secondsPerQuestion * 1000;
     const ticks = Array.from({ length: TICK_SECONDS }, (_, i) => {
       const delay = endsAt - (TICK_SECONDS - i) * 1000 - performance.now();
       return delay > 0 ? window.setTimeout(sounds.tick, delay) : undefined;
     });
     return () => ticks.forEach(window.clearTimeout);
-  }, [phase, questionStartedAt, settings.secondsPerQuestion]);
+  }, [phase, phaseStartedAt, paused, settings.secondsPerQuestion]);
 
   // Lock-in blips, one per player as their answer arrives.
   const locked = useRef<boolean[]>([]);

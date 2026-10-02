@@ -54,19 +54,37 @@ const saveToken = (token: string | null) => {
   }
 };
 
-const requestToken = async (): Promise<string | null> => {
-  const res = await fetch(`${API}/api_token.php?command=request`);
+const requestToken = async (signal?: AbortSignal): Promise<string | null> => {
+  const res = await fetch(`${API}/api_token.php?command=request`, { signal });
   const json = await res.json();
   const token = json.response_code === 0 ? (json.token as string) : null;
   saveToken(token);
   return token;
 };
 
-const resetToken = async (token: string) => {
-  await fetch(`${API}/api_token.php?command=reset&token=${token}`);
+const resetToken = async (token: string, signal?: AbortSignal) => {
+  await fetch(`${API}/api_token.php?command=reset&token=${token}`, { signal });
 };
 
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+const sleep = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    const t = setTimeout(resolve, ms);
+    signal?.addEventListener('abort', () => {
+      clearTimeout(t);
+      reject(signal.reason);
+    });
+  });
+
+// Open Trivia DB allows one question request per IP every 5 seconds, so space them out up front.
+const MIN_GAP_MS = 5200;
+let nextSlot = 0;
+
+const waitForSlot = async (signal?: AbortSignal) => {
+  const now = Date.now();
+  const wait = Math.max(0, nextSlot - now);
+  nextSlot = Math.max(now, nextSlot) + MIN_GAP_MS;
+  if (wait) await sleep(wait, signal);
+};
 
 // Open Trivia DB response codes
 const OK = 0;
@@ -75,33 +93,45 @@ const TOKEN_NOT_FOUND = 3;
 const TOKEN_EMPTY = 4;
 const RATE_LIMITED = 5;
 
-const fetchFromApi = async (settings: Settings): Promise<Question[]> => {
-  let token = readToken() ?? (await requestToken().catch(() => null));
+const fetchFromApi = async (settings: Settings, signal?: AbortSignal): Promise<Question[]> => {
+  let token = readToken() ?? (await requestToken(signal).catch(() => null));
+  let tokenWasReset = false;
 
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 5; attempt++) {
     const params = new URLSearchParams({ amount: String(settings.questionCount), type: 'multiple' });
     if (settings.category) params.set('category', String(settings.category));
     if (settings.difficulty) params.set('difficulty', settings.difficulty);
     if (token) params.set('token', token);
 
-    const res = await fetch(`${API}/api.php?${params}`);
+    await waitForSlot(signal);
+    const res = await fetch(`${API}/api.php?${params}`, { signal });
     const json = await res.json();
 
     switch (json.response_code) {
       case OK:
         return json.results.map((r: any) =>
-          buildQuestion(decode(r.category).replace(/^Entertainment: /, ''), r.difficulty, decode(r.question), decode(r.correct_answer), r.incorrect_answers.map(decode))
+          buildQuestion(
+            decode(r.category).replace(/^Entertainment: /, ''),
+            r.difficulty,
+            decode(r.question),
+            decode(r.correct_answer),
+            r.incorrect_answers.map(decode)
+          )
         );
       case NO_RESULTS:
+      case TOKEN_EMPTY:
+        // With a token, "no results" can just mean we've already seen most of this category. Start fresh once.
+        if (token && !tokenWasReset) {
+          await resetToken(token, signal);
+          tokenWasReset = true;
+          break;
+        }
         throw new NotEnoughQuestionsError();
       case TOKEN_NOT_FOUND:
-        token = await requestToken();
-        break;
-      case TOKEN_EMPTY:
-        if (token) await resetToken(token);
+        token = await requestToken(signal);
         break;
       case RATE_LIMITED:
-        await sleep(5000);
+        nextSlot = Date.now() + MIN_GAP_MS;
         break;
       default:
         throw new Error(`Open Trivia DB response code ${json.response_code}`);
@@ -121,12 +151,22 @@ const backupQuestions = (count: number): Question[] =>
     .slice(0, count)
     .map(([category, text, correct, ...wrong]) => buildQuestion(category, 'medium', text, correct, wrong));
 
-/** Fetches questions, falling back to the built-in set if the API is unreachable. */
-export const loadQuestions = async (settings: Settings): Promise<{ questions: Question[]; usingBackup: boolean }> => {
+/**
+ * Fetches questions. If the API is unreachable and no category was picked, falls back to the built-in set;
+ * with a category picked we'd rather say so than serve off-topic questions.
+ */
+export const loadQuestions = async (
+  settings: Settings,
+  signal?: AbortSignal
+): Promise<{ questions: Question[]; usingBackup: boolean }> => {
   try {
-    return { questions: await fetchFromApi(settings), usingBackup: false };
+    return { questions: await fetchFromApi(settings, signal), usingBackup: false };
   } catch (e) {
-    if (e instanceof NotEnoughQuestionsError) throw e;
+    if (signal?.aborted || e instanceof NotEnoughQuestionsError) throw e;
+    console.warn('Question server failed:', e);
+    if (settings.category) {
+      throw new Error("Couldn't reach the question server for that category. Give it a few seconds and hit Start again.");
+    }
     return { questions: backupQuestions(settings.questionCount), usingBackup: true };
   }
 };

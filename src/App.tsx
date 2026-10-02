@@ -1,4 +1,5 @@
 import { ControlsOverlay } from './components/ControlsOverlay';
+import { PauseOverlay } from './components/PauseOverlay';
 import { FinalScreen } from './components/FinalScreen';
 import { RoundScreen } from './components/RoundScreen';
 import { SetupScreen } from './components/SetupScreen';
@@ -9,7 +10,13 @@ import { useSoundEffects } from './game/useSoundEffects';
 
 export const App = () => {
   const [showControls, setShowControls] = useState(false);
-  const { state, start, answer, next, rematch, newGame } = useGame(showControls);
+  const { state, start, answer, next, rematch, newGame, pause, resume } = useGame(showControls);
+  const paused = state.pausedAt !== null;
+  // Opening the controls mid-game pauses it, so nobody loses time reading them.
+  const openControls = () => {
+    pause();
+    setShowControls(true);
+  };
   const { phase } = state;
   useSoundEffects(state);
 
@@ -25,15 +32,18 @@ export const App = () => {
       if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
       if (e.code === 'KeyM') toggleMute();
-      else if (e.code === 'Slash' || e.key === '?' || e.code === 'KeyH') setShowControls(s => !s);
+      else if (e.code === 'Slash' || e.key === '?' || e.code === 'KeyH') {
+        pause();
+        setShowControls(s => !s);
+      }
       else if (e.code === 'Escape') setShowControls(false);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [pause]);
 
   return (
-    <div className={`app phase-${phase}`}>
+    <div className={`app phase-${phase} ${paused ? 'is-paused' : ''}`}>
       <header className="header">
         <h1 aria-label="Trivia">
           {'Trivia'.split('').map((c, i) => (
@@ -42,7 +52,7 @@ export const App = () => {
             </span>
           ))}
         </h1>
-        <button className="help-button" onClick={() => setShowControls(true)} title="Controls (?)">
+        <button className="help-button" onClick={openControls} title="Controls (?)">
           ?
         </button>
         <button className="mute-button" onClick={toggleMute} aria-pressed={muted} title={muted ? 'Sound off (M)' : 'Sound on (M)'}>
@@ -65,13 +75,15 @@ export const App = () => {
         {phase === 'final' && <FinalScreen state={state} onRematch={rematch} onNewGame={newGame} />}
       </main>
 
+      {paused && !showControls && <PauseOverlay state={state} onResume={resume} onQuit={newGame} onShowControls={openControls} />}
+
       {showControls && (
         <ControlsOverlay initialPlayers={state.settings.playerCount} names={state.settings.names} onClose={() => setShowControls(false)} />
       )}
 
       <footer>
         <span>? controls · </span>
-        {phase !== 'setup' && phase !== 'final' ? <span>esc to quit · </span> : null}
+        {phase !== 'setup' && phase !== 'final' ? <span>esc to pause · </span> : null}
         &copy; {new Date().getFullYear()} Oscar Villalta
       </footer>
     </div>
