@@ -1,3 +1,4 @@
+import { AnimatedNumber } from './AnimatedNumber';
 import { visibleScores } from '../game/engine';
 import { PLAYER_KEYS } from '../game/keys';
 import { GameState } from '../game/types';
@@ -17,24 +18,31 @@ export const Scoreboard = ({ state }: { state: GameState }) => {
 
         let status: string;
         let statusClass = '';
+        let panelClass = '';
         if (phase === 'intro') status = 'Get ready…';
         else if (phase === 'question') {
           status = answer ? 'Locked in!' : 'Thinking…';
           statusClass = answer ? 'locked' : '';
+          panelClass = answer ? 'is-locked' : 'is-thinking';
         } else if (phase === 'reveal') {
-          if (!answer) [status, statusClass] = ["Time's up", 'wrong'];
-          else if (answer.correct) [status, statusClass] = [`+${answer.points}  ·  ${(answer.elapsedMs / 1000).toFixed(2)}s`, 'right'];
-          else [status, statusClass] = ['Wrong!', 'wrong'];
+          if (!answer) [status, statusClass, panelClass] = ["Time's up", 'wrong', 'is-wrong'];
+          else if (answer.correct)
+            [status, statusClass, panelClass] = [`+${answer.points}  ·  ${(answer.elapsedMs / 1000).toFixed(2)}s`, 'right', 'is-right'];
+          else [status, statusClass, panelClass] = ['Wrong!', 'wrong', 'is-wrong'];
         } else status = '';
 
         return (
-          <div className={`player-panel p${p + 1}`} key={p}>
+          <div className={`player-panel p${p + 1} ${panelClass}`} key={p}>
             <div className="name">
               {leading && <span title="In the lead">👑</span>}
               {settings.names[p]}
             </div>
-            <div className="score">{score.toLocaleString()}</div>
-            <div className={`status ${statusClass}`}>{status}</div>
+            <div className="score">
+              <AnimatedNumber value={score} />
+            </div>
+            <div className={`status ${statusClass}`} key={status}>
+              {status}
+            </div>
             {settings.playerCount > 1 && (
               <div className="keycaps small">
                 {PLAYER_KEYS[p].labels.map(k => (

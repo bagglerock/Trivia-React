@@ -1,7 +1,9 @@
+import type React from 'react';
 import { pointsAt } from '../game/engine';
 import { ANSWER_LETTERS, PLAYER_KEYS } from '../game/keys';
 import { GameState } from '../game/types';
 import { INTRO_MS, REVEAL_MS, useNow } from '../game/useGame';
+import { Confetti } from './Confetti';
 import { Scoreboard } from './Scoreboard';
 
 interface Props {
@@ -42,7 +44,14 @@ export const RoundScreen = ({ state, onAnswer, onNext }: Props) => {
 
       {phase === 'intro' ? (
         <div className="question-wrapper intro" key={`intro-${index}`}>
-          <div className="intro-number">Q{index + 1}</div>
+          <div className="intro-label">Question {index + 1}</div>
+          <div className="intro-count">
+            {[3, 2, 1].map((n, i) => (
+              <span key={n} style={{ animationDelay: `${(INTRO_MS / 3) * i}ms`, animationDuration: `${INTRO_MS / 3}ms` }}>
+                {n}
+              </span>
+            ))}
+          </div>
           <div className="intro-bar" style={{ animationDuration: `${INTRO_MS}ms` }} />
         </div>
       ) : (
@@ -52,19 +61,28 @@ export const RoundScreen = ({ state, onAnswer, onNext }: Props) => {
           </div>
 
           <div className="timer">
-            <div className="timer-bar" style={{ width: `${fraction * 100}%` }} data-urgent={fraction < 0.25} />
-            <div className="timer-points">{timerLabel}</div>
+            <div className="timer-bar" style={{ width: `${fraction * 100}%` }} data-urgent={!revealing && fraction < 0.34} />
+            <div className="timer-points" data-urgent={!revealing && fraction < 0.34} key={revealing ? 'reveal' : 'live'}>
+              {timerLabel}
+            </div>
           </div>
 
           <div className="answer-wrapper">
             {question.answers.map((answer, i) => {
               const isCorrect = i === question.correctIndex;
               const pickedBy = answers.map((a, p) => (a?.choice === i ? p : -1)).filter(p => p !== -1);
-              const cls = ['answer', revealing && (isCorrect ? 'correct' : 'faded')].filter(Boolean).join(' ');
+              const cls = [
+                'answer',
+                revealing && (isCorrect ? 'correct' : 'faded'),
+                revealing && !isCorrect && pickedBy.length > 0 && 'picked-wrong',
+              ]
+                .filter(Boolean)
+                .join(' ');
               return (
                 <button
                   key={i}
                   className={cls}
+                  style={{ '--i': i } as React.CSSProperties}
                   disabled={!solo || revealing || answers[0] !== null}
                   onClick={() => onAnswer(0, i)}
                 >
@@ -96,6 +114,8 @@ export const RoundScreen = ({ state, onAnswer, onNext }: Props) => {
       )}
 
       <Scoreboard state={state} />
+
+      {revealing && answers.some(a => a?.correct) && <Confetti key={index} />}
 
       {revealing && (
         <button className="next-button" onClick={onNext}>

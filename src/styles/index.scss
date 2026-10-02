@@ -18,6 +18,11 @@ $shadow: 0.3rem 0.3rem 0 $ink;
   box-sizing: border-box;
 }
 
+html {
+  // Everything is in rem, so this one line makes the whole game scale with the screen.
+  font-size: clamp(14px, 0.45vw + 8px, 18px);
+}
+
 html,
 body {
   margin: 0;
@@ -69,9 +74,22 @@ kbd {
 // ---- Layout ----
 
 .app {
+  position: relative;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
+  isolation: isolate; // keeps the stripes above the page background
+
+  // Slowly drifting diagonal stripes behind everything.
+  &::before {
+    content: '';
+    position: fixed;
+    inset: -50%;
+    z-index: -1;
+    background: repeating-linear-gradient(45deg, transparent 0 2.5rem, rgba(255, 215, 0, 0.18) 2.5rem 5rem);
+    animation: drift 40s linear infinite;
+  }
 }
 
 .header {
@@ -82,17 +100,24 @@ kbd {
 
   h1 {
     font-family: $display;
-    font-size: clamp(2rem, 5vw, 3rem);
+    font-size: 2.5rem;
     letter-spacing: 2px;
+
+    span {
+      display: inline-block;
+      animation: wave 3s ease-in-out infinite;
+    }
   }
 }
 
 .main {
   flex: 1;
   width: 100%;
-  max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+  max-width: 1500px;
   margin: 0 auto;
-  padding: 1.5rem 1rem 2rem;
+  padding: 1.5rem 1.5rem 2rem;
 }
 
 footer {
@@ -455,6 +480,7 @@ footer {
 }
 
 .round {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -466,7 +492,7 @@ footer {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  font-size: 0.9rem;
+  font-size: 1rem;
 
   em {
     font-style: normal;
@@ -475,7 +501,8 @@ footer {
 }
 
 .question-wrapper {
-  min-height: 170px;
+  flex: 1;
+  min-height: 9rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -488,21 +515,39 @@ footer {
   animation: pop-in 0.3s ease-out;
 
   h2 {
-    font-size: clamp(1.3rem, 3vw, 2.3rem);
-    line-height: 1.3;
+    font-size: clamp(1.4rem, 2.6vw, 2.5rem);
+    line-height: 1.25;
   }
 
   &.intro {
     position: relative;
+    flex-direction: column;
     overflow: hidden;
-    min-height: 342px; // roughly the height of question + timer + answers, so the layout doesn't jump
   }
 }
 
-.intro-number {
+.intro-label {
   font-family: $display;
-  font-size: clamp(4rem, 14vw, 9rem);
-  animation: pop-in 0.4s ease-out;
+  font-size: 1.8rem;
+  animation: slide-down 0.4s ease-out;
+}
+
+.intro-count {
+  position: relative;
+  width: 100%;
+  height: 7rem;
+
+  span {
+    position: absolute;
+    inset: 0;
+    font-family: $display;
+    font-size: 6rem;
+    line-height: 7rem;
+    opacity: 0;
+    animation-name: count-pop;
+    animation-timing-function: ease-out;
+    animation-fill-mode: both;
+  }
 }
 
 .intro-bar {
@@ -518,7 +563,7 @@ footer {
 
 .timer {
   position: relative;
-  height: 2.2rem;
+  height: 2.4rem;
   border: 3px solid $ink;
   border-radius: 0.6rem;
   background: white;
@@ -527,10 +572,14 @@ footer {
 
 .timer-bar {
   height: 100%;
-  background: $gold;
+  background: linear-gradient(90deg, $gold, #ffe866, $gold);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
 
   &[data-urgent='true'] {
-    background: $coral-hot;
+    background: linear-gradient(90deg, $wrong, $coral-hot, $wrong);
+    background-size: 200% 100%;
+    animation: shimmer 0.5s linear infinite;
   }
 }
 
@@ -541,8 +590,13 @@ footer {
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-variant-numeric: tabular-nums;
+  animation: pop-in 0.3s ease-out;
+
+  &[data-urgent='true'] {
+    animation: heartbeat 0.5s ease-in-out infinite;
+  }
 }
 
 .answer-wrapper {
@@ -560,13 +614,14 @@ footer {
   display: flex;
   align-items: center;
   gap: 0.9rem;
-  min-height: 4.5rem;
+  min-height: 4.4rem;
   padding: 0.75rem 1rem;
   border: 3px solid $ink;
-  border-radius: 0.75rem;
+  border-radius: 0.9rem;
   background: white;
   box-shadow: $shadow;
-  font-size: 1.2rem;
+  font-size: 1.3rem;
+  animation: slide-up 0.35s calc(var(--i, 0) * 80ms) ease-out both;
   font-weight: 700;
   text-align: left;
   transition: background 0.15s, transform 0.08s;
@@ -577,6 +632,7 @@ footer {
 
   &:not(:disabled):hover {
     background: $coral-hot;
+    transform: translateY(-3px);
   }
   &:not(:disabled):active {
     transform: translate(0.2rem, 0.2rem);
@@ -590,13 +646,13 @@ footer {
     flex: none;
     display: grid;
     place-items: center;
-    width: 2.4rem;
-    height: 2.4rem;
+    width: 2.5rem;
+    height: 2.5rem;
     border: 3px solid $ink;
     border-radius: 50%;
     background: $gold;
     font-family: $display;
-    font-size: 1rem;
+    font-size: 1.05rem;
   }
 
   .text {
@@ -618,7 +674,12 @@ footer {
   &.correct {
     background: $right;
     color: white;
-    animation: bounce 0.4s ease-out;
+    animation: bounce 0.4s ease-out, glow 1.2s 0.4s ease-in-out infinite alternate;
+    z-index: 1;
+  }
+  &.picked-wrong {
+    animation: shake 0.45s ease-in-out;
+    border-color: $wrong;
   }
   &.faded > .letter,
   &.faded > .text {
@@ -671,19 +732,42 @@ footer {
   border-radius: 0.75rem;
   background: white;
   box-shadow: $shadow;
+  transition: background 0.3s, transform 0.2s;
+
+  &.is-thinking .status::after {
+    content: '';
+    display: inline-block;
+    width: 0.5em;
+    height: 0.5em;
+    margin-left: 0.4em;
+    border-radius: 50%;
+    background: var(--player);
+    animation: pulse 0.6s ease-in-out infinite alternate;
+  }
+  &.is-locked {
+    background: color-mix(in srgb, var(--player) 14%, white);
+    animation: lock-flash 0.45s ease-out;
+  }
+  &.is-right {
+    background: color-mix(in srgb, #{$right} 18%, white);
+    animation: bounce 0.5s ease-out;
+  }
+  &.is-wrong {
+    animation: shake 0.45s ease-in-out;
+  }
 
   .name {
     grid-area: name;
     display: flex;
     gap: 0.35rem;
     font-weight: 700;
-    font-size: 1.2rem;
+    font-size: 1.25rem;
     color: var(--player);
   }
   .score {
     grid-area: score;
     font-weight: 700;
-    font-size: 1.8rem;
+    font-size: 2rem;
     text-align: right;
     font-variant-numeric: tabular-nums;
   }
@@ -691,7 +775,9 @@ footer {
     grid-area: status;
     min-height: 1.4em;
     font-weight: 700;
+    font-size: 1rem;
     opacity: 0.7;
+    animation: slide-up 0.25s ease-out;
 
     &.locked {
       opacity: 1;
@@ -752,14 +838,14 @@ footer {
 
   .headline {
     font-family: $display;
-    font-size: clamp(2rem, 6vw, 3.5rem);
-    animation: bounce 0.6s ease-out;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    animation: slam 0.7s cubic-bezier(0.2, 1.6, 0.4, 1) both;
   }
 }
 
 .final-cards {
   display: grid;
-  grid-template-columns: repeat(var(--cols, 1), minmax(0, 320px));
+  grid-template-columns: repeat(var(--cols, 1), minmax(0, 21rem));
   justify-content: center;
   gap: 1.5rem;
   width: 100%;
@@ -777,9 +863,11 @@ footer {
   background: white;
   box-shadow: $shadow;
 
+  animation: slide-up 0.5s calc(0.3s + var(--i, 0) * 0.15s) ease-out both;
+
   &.winner {
     background: #fff6c2;
-    transform: scale(1.04);
+    animation: slide-up 0.5s calc(0.3s + var(--i, 0) * 0.15s) ease-out both, float 2.5s 1s ease-in-out infinite;
   }
 
   .name {
@@ -857,15 +945,19 @@ footer {
     gap: 0.75rem;
   }
   .question-wrapper {
-    min-height: 140px;
+    min-height: 7rem;
     padding: 1.25rem;
-
-    &.intro {
-      min-height: 292px;
-    }
   }
   .answer {
-    min-height: 3.6rem;
+    min-height: 4rem;
+  }
+  .intro-count {
+    height: 5rem;
+
+    span {
+      font-size: 4.5rem;
+      line-height: 5rem;
+    }
   }
 }
 
@@ -910,6 +1002,163 @@ footer {
   }
 }
 
+// Confetti pieces fall from above the screen with drift and spin.
+.confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  overflow: hidden;
+  pointer-events: none;
+
+  span {
+    position: absolute;
+    top: -5vh;
+    left: var(--x);
+    width: var(--w);
+    height: var(--h);
+    animation: confetti-fall var(--dur) var(--delay) cubic-bezier(0.3, 0.6, 0.6, 1) both;
+  }
+}
+
+@keyframes confetti-fall {
+  from {
+    transform: translate(0, 0) rotate(0);
+    opacity: 1;
+  }
+  to {
+    transform: translate(var(--drift), 110vh) rotate(var(--spin));
+    opacity: 0.9;
+  }
+}
+
+@keyframes drift {
+  to {
+    transform: translate(7.07rem, 0);
+  }
+}
+
+@keyframes wave {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  20% {
+    transform: translateY(-0.18em) rotate(-4deg);
+  }
+  40% {
+    transform: translateY(0.04em) rotate(2deg);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(1.2rem);
+  }
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-1.2rem);
+  }
+}
+
+@keyframes count-pop {
+  0% {
+    opacity: 0;
+    transform: scale(2.2);
+  }
+  25% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+@keyframes heartbeat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+    color: $wrong;
+  }
+}
+
+@keyframes glow {
+  from {
+    box-shadow: $shadow, 0 0 0 0 rgba(59, 178, 115, 0.6);
+  }
+  to {
+    box-shadow: $shadow, 0 0 0 0.6rem rgba(59, 178, 115, 0);
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-0.5rem);
+  }
+  40%,
+  80% {
+    transform: translateX(0.5rem);
+  }
+}
+
+@keyframes lock-flash {
+  0% {
+    background: var(--player);
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes slam {
+  from {
+    opacity: 0;
+    transform: scale(3) rotate(-8deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(-2deg);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-0.6rem);
+  }
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -933,7 +1182,11 @@ footer {
     transition: none !important;
   }
   .intro-bar,
-  .auto-bar {
+  .auto-bar,
+  .confetti {
     display: none;
+  }
+  .intro-count span:last-child {
+    opacity: 1;
   }
 }

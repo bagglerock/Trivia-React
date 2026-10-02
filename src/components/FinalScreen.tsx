@@ -1,3 +1,6 @@
+import type React from 'react';
+import { AnimatedNumber } from './AnimatedNumber';
+import { Confetti } from './Confetti';
 import { statsFor } from '../game/engine';
 import { GameState } from '../game/types';
 
@@ -22,13 +25,16 @@ export const FinalScreen = ({ state, onRematch, onNewGame }: Props) => {
 
   return (
     <div className="final screen">
+      <Confetti pieces={140} long />
       <h2 className="headline">{headline}</h2>
 
       <div className={`final-cards players-${settings.playerCount}`}>
         {stats.map((s, p) => (
-          <div className={`final-card p${p + 1} ${settings.playerCount > 1 && s.score === top ? 'winner' : ''}`} key={p}>
+          <div style={{ '--i': p } as React.CSSProperties} className={`final-card p${p + 1} ${settings.playerCount > 1 && s.score === top ? 'winner' : ''}`} key={p}>
             <div className="name">{s.name}</div>
-            <div className="score">{s.score.toLocaleString()}</div>
+            <div className="score">
+              <AnimatedNumber value={s.score} from={0} duration={1800} />
+            </div>
             <dl>
               <dt>Correct</dt>
               <dd>

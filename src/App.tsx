@@ -33,9 +33,15 @@ export const App = () => {
   }, []);
 
   return (
-    <div className="app">
+    <div className={`app phase-${phase}`}>
       <header className="header">
-        <h1>Trivia</h1>
+        <h1 aria-label="Trivia">
+          {'Trivia'.split('').map((c, i) => (
+            <span key={i} style={{ animationDelay: `${i * 0.12}s` }}>
+              {c}
+            </span>
+          ))}
+        </h1>
         <button className="help-button" onClick={() => setShowControls(true)} title="Controls (?)">
           ?
         </button>
