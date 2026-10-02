@@ -160,6 +160,7 @@ footer {
   }
 }
 
+.help-button,
 .mute-button {
   position: absolute;
   top: 50%;
@@ -177,6 +178,148 @@ footer {
   &[aria-pressed='true'] {
     opacity: 0.6;
   }
+}
+
+.help-button {
+  right: 4.2rem;
+  font-family: $display;
+  font-size: 1.2rem;
+}
+
+// ---- Controls overlay ----
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(17, 17, 17, 0.55);
+  animation: fade-in 0.15s ease-out;
+}
+
+.overlay-card {
+  width: min(680px, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1.5rem;
+  border: 3px solid $ink;
+  border-radius: 1rem;
+  background: $cream;
+  box-shadow: 0.5rem 0.5rem 0 $ink;
+  animation: pop-in 0.2s ease-out;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.1rem;
+  text-align: center;
+
+  h2 {
+    font-family: $display;
+    font-size: 2rem;
+  }
+
+  h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.15rem;
+    color: var(--player);
+
+    span {
+      color: $ink;
+      opacity: 0.6;
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+  }
+
+  p {
+    line-height: 2;
+  }
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+.keyboard {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  justify-content: center;
+
+  kbd {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 2.8rem;
+    height: 3.1rem;
+    font-size: 1.1rem;
+    line-height: 1.1;
+
+    &.p1,
+    &.p2 {
+      background: var(--player);
+      color: white;
+      animation: pop-in 0.25s ease-out;
+    }
+    &.idle {
+      opacity: 0.35;
+    }
+
+    small {
+      font-size: 0.65rem;
+      opacity: 0.85;
+    }
+  }
+
+  @media (max-width: 560px) {
+    kbd {
+      width: 2rem;
+      height: 2.6rem;
+      font-size: 0.9rem;
+    }
+  }
+}
+
+.control-columns {
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+
+  &.two {
+    grid-template-columns: 1fr 1fr;
+
+    @media (max-width: 560px) {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+.control-block {
+  padding: 1rem;
+  border: 3px solid $ink;
+  border-top: 0.6rem solid var(--player);
+  border-radius: 0.75rem;
+  background: white;
+
+  li {
+    padding: 0.2rem 0;
+  }
+}
+
+.control-general {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 1.25rem;
+  font-size: 0.95rem;
 }
 
 // ---- Setup ----
@@ -698,6 +841,15 @@ footer {
       font-size: 1.8rem;
     }
   }
+  .help-button,
+  .mute-button {
+    width: 2.1rem;
+    height: 2.1rem;
+    font-size: 0.9rem;
+  }
+  .help-button {
+    right: 3.6rem;
+  }
   .main {
     padding-top: 1rem;
   }
@@ -755,6 +907,12 @@ footer {
   }
   to {
     transform: scaleX(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
   }
 }
 

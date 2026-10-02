@@ -7,7 +7,8 @@ import { Settings } from './types';
 export const INTRO_MS = 3000;
 export const REVEAL_MS = 6000;
 
-export const useGame = () => {
+/** `inputBlocked` stops game keys while an overlay (e.g. the controls help) is open. */
+export const useGame = (inputBlocked = false) => {
   const [state, dispatch] = useReducer(reducer, undefined, () => initialState());
   const { phase, settings, index, questionStartedAt } = state;
 
@@ -50,6 +51,7 @@ export const useGame = () => {
   // Keyboard: both players share one keyboard.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (inputBlocked) return;
       if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
 
@@ -74,7 +76,7 @@ export const useGame = () => {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [phase, settings.playerCount, rematch, newGame]);
+  }, [phase, settings.playerCount, rematch, newGame, inputBlocked]);
 
   return {
     state,

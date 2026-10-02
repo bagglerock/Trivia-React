@@ -19,7 +19,7 @@ One or two players on one keyboard, questions from [Open Trivia DB](https://open
 | Player 1 (left hand) | `A` | `S` | `D` | `F` |
 | Player 2 (right hand) | `J` | `K` | `L` | `;` |
 
-Solo players can use either side, the number keys `1`–`4`, or click/tap. `Esc` quits a game in progress. `M` (or the speaker button) toggles sound.
+Solo players can use either side, the number keys `1`–`4`, or click/tap. `Esc` quits a game in progress. `M` (or the speaker button) toggles sound. `?` or `H` (or the ? button) shows the controls for solo or head-to-head.
 
 If Open Trivia DB is unreachable or rate-limited, the game falls back to a built-in question set.
 

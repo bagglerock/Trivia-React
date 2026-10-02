@@ -124,6 +124,9 @@ export const SetupScreen = ({ onStart, error }: Props) => {
       <button type="submit" className="big-button">
         Start Game
       </button>
+      <small className="setup-hint">
+        Press <kbd>?</kbd> any time to see the controls
+      </small>
     </form>
   );
 };
