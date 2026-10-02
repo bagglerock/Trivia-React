@@ -1,0 +1,38 @@
+/**
+ * Used when Open Trivia DB can't be reached (offline, rate limited, etc).
+ * Format: [category, question, correct answer, ...wrong answers]
+ */
+export const BACKUP_QUESTIONS: [string, string, string, ...string[]][] = [
+  ['Books', 'How many books are in the Chronicles of Narnia series?', '7', '6', '8', '5'],
+  ['Geography', 'What is the largest non-continental island in the world?', 'Greenland', 'New Guinea', 'Borneo', 'Madagascar'],
+  ['General Knowledge', 'After how many years would you celebrate your crystal anniversary?', '15', '20', '10', '25'],
+  ['Sports', 'Which country hosted the 2022 FIFA World Cup?', 'Qatar', 'Russia', 'Brazil', 'Japan'],
+  ['Books', 'The novel "Jane Eyre" was written by what author?', 'Charlotte Brontë', 'Emily Brontë', 'Jane Austen', 'Louisa May Alcott'],
+  ['Anime & Manga', 'Which studio animated Soul Eater?', 'Bones', 'Kyoto Animation', 'Xebec', 'Production I.G'],
+  ['Science', 'What is the chemical symbol for gold?', 'Au', 'Ag', 'Gd', 'Go'],
+  ['Science', 'Which planet is known as the Red Planet?', 'Mars', 'Jupiter', 'Venus', 'Mercury'],
+  ['Science', 'How many bones are in the adult human body?', '206', '212', '198', '230'],
+  ['Geography', 'What is the capital of Australia?', 'Canberra', 'Sydney', 'Melbourne', 'Perth'],
+  ['Geography', 'Which is the longest river in South America?', 'Amazon', 'Paraná', 'Orinoco', 'Magdalena'],
+  ['Geography', 'Mount Kilimanjaro is located in which country?', 'Tanzania', 'Kenya', 'Uganda', 'Ethiopia'],
+  ['History', 'In what year did the Berlin Wall fall?', '1989', '1991', '1985', '1979'],
+  ['History', 'Who was the first President of the United States?', 'George Washington', 'John Adams', 'Thomas Jefferson', 'Benjamin Franklin'],
+  ['History', 'The Titanic sank in which year?', '1912', '1905', '1921', '1898'],
+  ['Music', 'Which band released the album "Abbey Road"?', 'The Beatles', 'The Rolling Stones', 'The Who', 'Led Zeppelin'],
+  ['Music', 'How many strings does a standard guitar have?', '6', '5', '7', '8'],
+  ['Film', 'Who directed "Jurassic Park" (1993)?', 'Steven Spielberg', 'James Cameron', 'George Lucas', 'Ridley Scott'],
+  ['Film', 'In the 1939 film "The Wizard of Oz", what color are Dorothy\'s slippers?', 'Ruby red', 'Silver', 'Emerald green', 'Gold'],
+  ['Television', 'In "Friends", what is the name of the coffee shop?', 'Central Perk', 'The Daily Grind', "Java Joe's", 'Café Nervosa'],
+  ['Television', 'In which city is the TV show "Cheers" set?', 'Boston', 'Chicago', 'New York', 'Philadelphia'],
+  ['Sports', 'How many players does one team have on the field in a soccer match?', '11', '10', '9', '12'],
+  ['Sports', 'In bowling, what is the term for three strikes in a row?', 'Turkey', 'Hat trick', 'Triple', 'Eagle'],
+  ['Sports', 'What is the highest possible score in a single game of ten-pin bowling?', '300', '250', '270', '330'],
+  ['Animals', 'What is the fastest land animal?', 'Cheetah', 'Pronghorn', 'Lion', 'Greyhound'],
+  ['Animals', 'How many hearts does an octopus have?', '3', '1', '2', '4'],
+  ['Food & Drink', 'Which country is the cocktail "Mojito" from?', 'Cuba', 'Mexico', 'Brazil', 'Spain'],
+  ['Food & Drink', 'What is the main ingredient in guacamole?', 'Avocado', 'Tomato', 'Lime', 'Tomatillo'],
+  ['Food & Drink', 'Which grain is used to make traditional Japanese sake?', 'Rice', 'Barley', 'Wheat', 'Millet'],
+  ['Video Games', 'What is the name of the princess in the "Super Mario" series?', 'Peach', 'Zelda', 'Daisy', 'Rosalina'],
+  ['Computers', 'What does "CPU" stand for?', 'Central Processing Unit', 'Computer Personal Unit', 'Central Program Utility', 'Core Processing Unit'],
+  ['General Knowledge', 'How many sides does a hexagon have?', '6', '5', '7', '8'],
+];

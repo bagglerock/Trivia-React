@@ -1,57 +1,30 @@
 {
   "name": "trivia-react",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
+  "type": "module",
   "homepage": "https://bagglerock.github.io/Trivia-React/",
-  "dependencies": {
-    "@fortawesome/fontawesome-svg-core": "^1.2.28",
-    "@fortawesome/free-solid-svg-icons": "^5.13.0",
-    "@fortawesome/react-fontawesome": "^0.1.9",
-    "@testing-library/jest-dom": "^4.2.4",
-    "@testing-library/react": "^9.3.2",
-    "@testing-library/user-event": "^7.1.2",
-    "@types/jest": "^24.0.0",
-    "@types/lodash": "^4.14.152",
-    "@types/node": "^12.0.0",
-    "@types/react": "^16.9.0",
-    "@types/react-bootstrap": "^1.0.1",
-    "@types/react-dom": "^16.9.0",
-    "@typescript-eslint/eslint-plugin": "^4.11.0",
-    "axios": "^0.21.1",
-    "bootstrap": "^4.5.0",
-    "html-entities": "^1.3.1",
-    "lodash": "^4.17.21",
-    "react": "^16.13.1",
-    "react-bootstrap": "^1.5.2",
-    "react-dom": "^16.13.1",
-    "react-scripts": "^4.0.3",
-    "typescript": "^4.1.3"
-  },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
+    "dev": "vite",
+    "start": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d build"
+    "deploy": "gh-pages -d dist"
   },
-  "eslintConfig": {
-    "extends": "react-app"
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "gh-pages": "^2.2.0",
-    "node-sass": "^5.0.0"
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "gh-pages": "^6.3.0",
+    "sass": "^1.105.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2",
+    "vitest": "^4.1.11"
   }
 }

@@ -1,27 +1,38 @@
-Trivia Game using https://opentdb.com for questions and answers... for now...
+# Trivia
 
-Written using Typescript and React. Styling is using Bootstrap classes and Sass.
+Bar-style speed trivia — the kind on the TV at the bar where everyone's racing to buzz in.
+One or two players on one keyboard, questions from [Open Trivia DB](https://opentdb.com).
 
-Directions:
+## How it plays
 
-# Press start to play
+- Pick **Solo** or **Head to head**, enter names, choose 5–20 questions, the timer, a category and difficulty.
+- Each question shows for a quick "Q3" intro, then four multiple-choice answers.
+- Points start at **1000** and drain to **100** as the clock runs down. Answer right and you bank whatever was showing; answer wrong and you get nothing.
+- Your first answer is locked in — no changing it. Your opponent can't see what you picked until the reveal.
+- The reveal shows the right answer, who picked what, and how fast. It moves on automatically, or press **space**.
+- Final screen shows the winner, correct count, fastest and average correct times. **Enter** for a rematch.
 
-## Answer the questions - there will be 10 at a time.
+## Controls
 
-## Scoring is based on how long it takes to answer the question. The quicker you choose the correct answer, the higher the score will be.
+| | A | B | C | D |
+|---|---|---|---|---|
+| Player 1 (left hand) | `A` | `S` | `D` | `F` |
+| Player 2 (right hand) | `J` | `K` | `L` | `;` |
 
-## After the 10th question is answered, game returns to initial state and shows the score from the previous game.
+Solo players can use either side, the number keys `1`–`4`, or click/tap. `Esc` quits a game in progress.
 
-This is an initial concept, where more additions are to come whenever I have time.
+If Open Trivia DB is unreachable or rate-limited, the game falls back to a built-in question set.
 
-Features:
+## Development
 
-# random questions retrieved by an API call.
+Vite + React 18 + TypeScript + Sass.
 
-# questions also are randomized in order.
+```bash
+npm install
+npm run dev      # http://localhost:5173
+npm test         # game engine tests (vitest)
+npm run build
+npm run deploy   # GitHub Pages
+```
 
-# answers are in random order when displayed
-
-# timer determines the score
-
-Clone, install, and start gets it to run.
+Game rules live in `src/game/engine.ts` as a pure reducer; `src/game/useGame.ts` wires it to timers and the keyboard.
