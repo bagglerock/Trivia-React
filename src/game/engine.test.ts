@@ -3,11 +3,11 @@ import { DEFAULT_SETTINGS, MAX_POINTS, MIN_POINTS, initialState, pointsAt, reduc
 import { keyToAnswer } from './keys';
 import { GameState, Question } from './types';
 
-const q = (correctIndex: number): Question => ({ category: 'Test', difficulty: 'easy', text: '?', answers: ['a', 'b', 'c', 'd'], correctIndex });
+const q = (correctIndex: number): Question => ({ id: `q${correctIndex}`, category: 'Test', difficulty: 'easy', text: '?', answers: ['a', 'b', 'c', 'd'], correctIndex });
 
 const started = (playerCount: 1 | 2 = 2, questions = [q(0), q(1)]): GameState => {
   let s = reducer(initialState(), { type: 'START', settings: { ...DEFAULT_SETTINGS, playerCount, secondsPerQuestion: 10 } });
-  s = reducer(s, { type: 'LOADED', questions, usingBackup: false, now: 0 });
+  s = reducer(s, { type: 'LOADED', questions, notice: null, now: 0 });
   return reducer(s, { type: 'BEGIN_QUESTION', now: 1000 });
 };
 

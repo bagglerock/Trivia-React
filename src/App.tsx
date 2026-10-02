@@ -61,9 +61,7 @@ export const App = () => {
       </header>
 
       <main className="main">
-        {state.usingBackupQuestions && phase !== 'setup' && (
-          <div className="notice">Couldn't reach the question server — playing with the backup question set.</div>
-        )}
+        {state.notice && phase !== 'setup' && <div className="notice">{state.notice}</div>}
 
         {phase === 'setup' && <SetupScreen onStart={start} error={state.error} />}
         {phase === 'loading' && (
@@ -84,7 +82,14 @@ export const App = () => {
       <footer>
         <span>? controls · </span>
         {phase !== 'setup' && phase !== 'final' ? <span>esc to pause · </span> : null}
-        &copy; {new Date().getFullYear()} Oscar Villalta
+        &copy; {new Date().getFullYear()} Oscar Villalta · questions from{' '}
+        <a href="https://opentdb.com" target="_blank" rel="noreferrer">
+          Open Trivia DB
+        </a>{' '}
+        &amp;{' '}
+        <a href="https://the-trivia-api.com" target="_blank" rel="noreferrer">
+          The Trivia API
+        </a>
       </footer>
     </div>
   );

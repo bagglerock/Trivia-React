@@ -1,4 +1,5 @@
 export interface Question {
+  id: string;
   category: string;
   difficulty: string;
   text: string;
@@ -11,7 +12,8 @@ export interface Settings {
   names: [string, string];
   questionCount: number;
   secondsPerQuestion: number;
-  category: number | null;
+  /** One of CATEGORIES' ids, or null for anything. */
+  category: string | null;
   difficulty: 'easy' | 'medium' | 'hard' | null;
 }
 
@@ -36,6 +38,7 @@ export interface GameState {
   pausedAt: number | null;
   /** results[questionIndex][playerIndex]; null means no answer before time ran out. */
   results: (PlayerAnswer | null)[][];
-  usingBackupQuestions: boolean;
+  /** Shown above the game when something's not quite normal (offline, short game…). */
+  notice: string | null;
   error: string | null;
 }

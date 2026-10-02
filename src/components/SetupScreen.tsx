@@ -2,14 +2,18 @@ import { FormEvent, useState } from 'react';
 import { DEFAULT_SETTINGS, MAX_POINTS } from '../game/engine';
 import { PLAYER_KEYS } from '../game/keys';
 import { Settings } from '../game/types';
-import { CATEGORIES } from '../services/questions';
+import { CATEGORIES, savedQuestionCount } from '../services/questions';
 
 const STORAGE_KEY = 'trivia.settings';
 
 const loadSaved = (): Settings => {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null');
-    return saved ? { ...DEFAULT_SETTINGS, ...saved } : DEFAULT_SETTINGS;
+    if (!saved) return DEFAULT_SETTINGS;
+    const settings = { ...DEFAULT_SETTINGS, ...saved };
+    // Categories used to be Open Trivia DB numbers; drop anything we don't recognise.
+    if (!CATEGORIES.some(c => c.id === settings.category)) settings.category = null;
+    return settings;
   } catch {
     return DEFAULT_SETTINGS;
   }
@@ -98,7 +102,7 @@ export const SetupScreen = ({ onStart, error }: Props) => {
         </label>
         <label>
           Category
-          <select value={settings.category ?? ''} onChange={e => update({ category: e.target.value ? Number(e.target.value) : null })}>
+          <select value={settings.category ?? ''} onChange={e => update({ category: e.target.value || null })}>
             <option value="">Anything goes</option>
             {CATEGORIES.map(c => (
               <option key={c.id} value={c.id}>
@@ -124,9 +128,22 @@ export const SetupScreen = ({ onStart, error }: Props) => {
       <button type="submit" className="big-button">
         Start Game
       </button>
+      <SavedCount categoryId={settings.category} />
       <small className="setup-hint">
         Press <kbd>?</kbd> any time to see the controls
       </small>
     </form>
+  );
+};
+
+/** How much the offline question bank holds for the chosen category. */
+const SavedCount = ({ categoryId }: { categoryId: string | null }) => {
+  const count = savedQuestionCount(categoryId);
+  if (!count) return null;
+  const name = CATEGORIES.find(c => c.id === categoryId)?.name;
+  return (
+    <small className="saved-count" title="Saved in this browser so you can keep playing if the connection drops">
+      📦 {count.toLocaleString()} {name ? `${name} ` : ''}questions saved for offline play
+    </small>
   );
 };

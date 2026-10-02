@@ -3,16 +3,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { Question } from './game/types';
 import { INTRO_MS, REVEAL_MS } from './game/useGame';
-import { loadQuestions } from './services/questions';
+import { loadQuestions, topUpQuestionBank } from './services/questions';
 
 vi.mock('./services/questions', async importOriginal => ({
   ...(await importOriginal<typeof import('./services/questions')>()),
   loadQuestions: vi.fn(),
+  topUpQuestionBank: vi.fn(async () => {}),
 }));
 
 const QUESTIONS: Question[] = [
-  { category: 'Animals', difficulty: 'easy', text: 'Fastest land animal?', answers: ['Cheetah', 'Lion', 'Horse', 'Ostrich'], correctIndex: 0 },
-  { category: 'Science', difficulty: 'easy', text: 'Symbol for gold?', answers: ['Ag', 'Au', 'Gd', 'Go'], correctIndex: 1 },
+  { id: 'a', category: 'Animals', difficulty: 'easy', text: 'Fastest land animal?', answers: ['Cheetah', 'Lion', 'Horse', 'Ostrich'], correctIndex: 0 },
+  { id: 'b', category: 'Science', difficulty: 'easy', text: 'Symbol for gold?', answers: ['Ag', 'Au', 'Gd', 'Go'], correctIndex: 1 },
 ];
 
 const press = (code: string, key = '') => act(() => void fireEvent.keyDown(window, { code, key }));
@@ -34,7 +35,7 @@ const toQuestion = () => advance(INTRO_MS);
 
 beforeEach(() => {
   vi.useFakeTimers();
-  vi.mocked(loadQuestions).mockResolvedValue({ questions: QUESTIONS, usingBackup: false });
+  vi.mocked(loadQuestions).mockResolvedValue({ questions: QUESTIONS, notice: null });
 });
 
 afterEach(() => {
@@ -78,6 +79,9 @@ describe('a head-to-head game', () => {
     expect(screen.getByText('Player 1 wins!')).toBeTruthy();
     expect(screen.getByText('1 / 2')).toBeTruthy();
     expect(screen.getByText('0 / 2')).toBeTruthy();
+
+    // Somewhere in there it stocked up the question bank for next time.
+    expect(topUpQuestionBank).toHaveBeenCalledWith(expect.objectContaining({ playerCount: 2 }), expect.any(AbortSignal));
 
     press('Enter');
     expect(loadQuestions).toHaveBeenCalledTimes(2);

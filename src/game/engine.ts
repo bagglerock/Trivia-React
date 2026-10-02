@@ -20,7 +20,7 @@ export const pointsAt = (elapsedMs: number, durationMs: number): number => {
 
 export type Action =
   | { type: 'START'; settings: Settings }
-  | { type: 'LOADED'; questions: Question[]; usingBackup: boolean; now: number }
+  | { type: 'LOADED'; questions: Question[]; notice: string | null; now: number }
   | { type: 'LOAD_FAILED'; error: string }
   | { type: 'BEGIN_QUESTION'; now: number }
   | { type: 'ANSWER'; player: number; choice: number; now: number }
@@ -38,7 +38,7 @@ export const initialState = (settings: Settings = DEFAULT_SETTINGS): GameState =
   phaseStartedAt: null,
   pausedAt: null,
   results: [],
-  usingBackupQuestions: false,
+  notice: null,
   error: null,
 });
 
@@ -81,7 +81,7 @@ export const reducer = (state: GameState, action: Action): GameState => {
         phase: 'intro',
         phaseStartedAt: action.now,
         questions: action.questions,
-        usingBackupQuestions: action.usingBackup,
+        notice: action.notice,
         results: action.questions.map(() => Array(state.settings.playerCount).fill(null)),
       };
 

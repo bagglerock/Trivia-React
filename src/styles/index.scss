@@ -122,6 +122,11 @@ kbd {
 
 footer {
   padding: 0.9rem;
+
+  a {
+    color: $gold;
+  }
+
   text-align: center;
   color: white;
   background: $ink;
@@ -520,6 +525,11 @@ footer {
   @media (max-width: 700px) {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+.saved-count {
+  margin-top: -0.75rem;
+  opacity: 0.7;
 }
 
 // ---- Round ----

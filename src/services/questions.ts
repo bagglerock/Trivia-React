@@ -1,144 +1,19 @@
 import { Question, Settings } from '../game/types';
 import { BACKUP_QUESTIONS } from './backupQuestions';
+import { categoryById } from './categories';
+import { questionBank } from './questionBank';
+import { openTriviaDb } from './sources/openTriviaDb';
+import { theTriviaApi } from './sources/theTriviaApi';
+import { QuestionSource, RawQuestion } from './sources/types';
+import { hash, sameQuestionKey, shuffle } from './util';
 
-const API = 'https://opentdb.com';
-const TOKEN_KEY = 'trivia.opentdb.token';
+export { CATEGORIES } from './categories';
+export { shuffle } from './util';
 
-export const CATEGORIES: { id: number; name: string }[] = [
-  { id: 27, name: 'Animals' },
-  { id: 10, name: 'Books' },
-  { id: 18, name: 'Computers' },
-  { id: 11, name: 'Film' },
-  { id: 9, name: 'General Knowledge' },
-  { id: 22, name: 'Geography' },
-  { id: 23, name: 'History' },
-  { id: 12, name: 'Music' },
-  { id: 17, name: 'Science & Nature' },
-  { id: 21, name: 'Sports' },
-  { id: 14, name: 'Television' },
-  { id: 15, name: 'Video Games' },
-];
+export const SOURCES: QuestionSource[] = [openTriviaDb, theTriviaApi];
 
-export const shuffle = <T>(items: T[]): T[] => {
-  const a = [...items];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-};
-
-const decode = (html: string): string => new DOMParser().parseFromString(html, 'text/html').documentElement.textContent ?? html;
-
-const buildQuestion = (category: string, difficulty: string, text: string, correct: string, wrong: string[]): Question => {
-  const answers = shuffle([correct, ...wrong]);
-  return { category, difficulty, text, answers, correctIndex: answers.indexOf(correct) };
-};
-
-// ---- Session token: stops Open Trivia DB from repeating questions across games ----
-
-const readToken = (): string | null => {
-  try {
-    return localStorage.getItem(TOKEN_KEY);
-  } catch {
-    return null;
-  }
-};
-
-const saveToken = (token: string | null) => {
-  try {
-    if (token) localStorage.setItem(TOKEN_KEY, token);
-    else localStorage.removeItem(TOKEN_KEY);
-  } catch {
-    // storage unavailable; we just won't dedupe across games
-  }
-};
-
-const requestToken = async (signal?: AbortSignal): Promise<string | null> => {
-  const res = await fetch(`${API}/api_token.php?command=request`, { signal });
-  const json = await res.json();
-  const token = json.response_code === 0 ? (json.token as string) : null;
-  saveToken(token);
-  return token;
-};
-
-const resetToken = async (token: string, signal?: AbortSignal) => {
-  await fetch(`${API}/api_token.php?command=reset&token=${token}`, { signal });
-};
-
-const sleep = (ms: number, signal?: AbortSignal) =>
-  new Promise<void>((resolve, reject) => {
-    const t = setTimeout(resolve, ms);
-    signal?.addEventListener('abort', () => {
-      clearTimeout(t);
-      reject(signal.reason);
-    });
-  });
-
-// Open Trivia DB allows one question request per IP every 5 seconds, so space them out up front.
-const MIN_GAP_MS = 5200;
-let nextSlot = 0;
-
-const waitForSlot = async (signal?: AbortSignal) => {
-  const now = Date.now();
-  const wait = Math.max(0, nextSlot - now);
-  nextSlot = Math.max(now, nextSlot) + MIN_GAP_MS;
-  if (wait) await sleep(wait, signal);
-};
-
-// Open Trivia DB response codes
-const OK = 0;
-const NO_RESULTS = 1;
-const TOKEN_NOT_FOUND = 3;
-const TOKEN_EMPTY = 4;
-const RATE_LIMITED = 5;
-
-const fetchFromApi = async (settings: Settings, signal?: AbortSignal): Promise<Question[]> => {
-  let token = readToken() ?? (await requestToken(signal).catch(() => null));
-  let tokenWasReset = false;
-
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const params = new URLSearchParams({ amount: String(settings.questionCount), type: 'multiple' });
-    if (settings.category) params.set('category', String(settings.category));
-    if (settings.difficulty) params.set('difficulty', settings.difficulty);
-    if (token) params.set('token', token);
-
-    await waitForSlot(signal);
-    const res = await fetch(`${API}/api.php?${params}`, { signal });
-    const json = await res.json();
-
-    switch (json.response_code) {
-      case OK:
-        return json.results.map((r: any) =>
-          buildQuestion(
-            decode(r.category).replace(/^Entertainment: /, ''),
-            r.difficulty,
-            decode(r.question),
-            decode(r.correct_answer),
-            r.incorrect_answers.map(decode)
-          )
-        );
-      case NO_RESULTS:
-      case TOKEN_EMPTY:
-        // With a token, "no results" can just mean we've already seen most of this category. Start fresh once.
-        if (token && !tokenWasReset) {
-          await resetToken(token, signal);
-          tokenWasReset = true;
-          break;
-        }
-        throw new NotEnoughQuestionsError();
-      case TOKEN_NOT_FOUND:
-        token = await requestToken(signal);
-        break;
-      case RATE_LIMITED:
-        nextSlot = Date.now() + MIN_GAP_MS;
-        break;
-      default:
-        throw new Error(`Open Trivia DB response code ${json.response_code}`);
-    }
-  }
-  throw new Error('Open Trivia DB kept refusing the request');
-};
+/** Fewer than this and it's not really a game. */
+export const MIN_QUESTIONS = 5;
 
 export class NotEnoughQuestionsError extends Error {
   constructor() {
@@ -146,27 +21,112 @@ export class NotEnoughQuestionsError extends Error {
   }
 }
 
-const backupQuestions = (count: number): Question[] =>
-  shuffle(BACKUP_QUESTIONS)
-    .slice(0, count)
-    .map(([category, text, correct, ...wrong]) => buildQuestion(category, 'medium', text, correct, wrong));
+export interface LoadResult {
+  questions: Question[];
+  /** Shown above the game when something's not quite normal (offline, short game…). */
+  notice: string | null;
+}
 
-/**
- * Fetches questions. If the API is unreachable and no category was picked, falls back to the built-in set;
- * with a category picked we'd rather say so than serve off-topic questions.
- */
-export const loadQuestions = async (
-  settings: Settings,
-  signal?: AbortSignal
-): Promise<{ questions: Question[]; usingBackup: boolean }> => {
-  try {
-    return { questions: await fetchFromApi(settings, signal), usingBackup: false };
-  } catch (e) {
-    if (signal?.aborted || e instanceof NotEnoughQuestionsError) throw e;
-    console.warn('Question server failed:', e);
-    if (settings.category) {
-      throw new Error("Couldn't reach the question server for that category. Give it a few seconds and hit Start again.");
-    }
-    return { questions: backupQuestions(settings.questionCount), usingBackup: true };
+const toQuestion = (q: RawQuestion): Question => {
+  const answers = shuffle([q.correct, ...q.wrong]);
+  return { id: q.id, category: q.category, difficulty: q.difficulty, text: q.text, answers, correctIndex: answers.indexOf(q.correct) };
+};
+
+const builtInQuestions = (): RawQuestion[] =>
+  BACKUP_QUESTIONS.map(([category, text, correct, ...wrong]) => ({
+    id: `builtin:${hash(text)}`,
+    source: 'builtin',
+    category,
+    categoryIds: [],
+    difficulty: 'medium',
+    text,
+    correct,
+    wrong,
+  }));
+
+/** Take one from each list in turn, so a game mixes sources. */
+const interleave = <T,>(lists: T[][]): T[] => {
+  const out: T[] = [];
+  for (let i = 0; lists.some(l => i < l.length); i++) lists.forEach(l => i < l.length && out.push(l[i]));
+  return out;
+};
+
+/** Adds questions to `chosen` until it has `count`, skipping any it already has (same id or same wording). */
+const fill = (chosen: RawQuestion[], count: number, more: RawQuestion[]) => {
+  const ids = new Set(chosen.map(q => q.id));
+  const texts = new Set(chosen.map(q => sameQuestionKey(q.text)));
+  for (const q of more) {
+    if (chosen.length >= count) break;
+    const key = sameQuestionKey(q.text);
+    if (ids.has(q.id) || texts.has(key)) continue;
+    chosen.push(q);
+    ids.add(q.id);
+    texts.add(key);
   }
 };
+
+/**
+ * Gets a game's worth of questions:
+ * 1. asks every source that covers the category, at the same time;
+ * 2. saves everything they send to the question bank (more than we need — that's the offline stash);
+ * 3. plays questions we haven't seen yet first, topping up from the bank;
+ * 4. with no connection at all, plays from the bank — or, for "Anything goes", the built-in set.
+ */
+export const loadQuestions = async (settings: Settings, signal?: AbortSignal): Promise<LoadResult> => {
+  const count = settings.questionCount;
+  const filter = { categoryId: settings.category, difficulty: settings.difficulty };
+  const sources = SOURCES.filter(s => s.supports(settings.category));
+
+  const results = await Promise.allSettled(sources.map(s => s.fetch(count, settings, signal)));
+  if (signal?.aborted) throw signal.reason;
+
+  const fetched: RawQuestion[][] = [];
+  results.forEach((r, i) => {
+    if (r.status === 'fulfilled') fetched.push(r.value);
+    else console.warn(`${sources[i].name} failed:`, r.reason);
+  });
+  const online = fetched.length > 0;
+  questionBank.add(fetched.flat());
+
+  const seen = questionBank.seenIds();
+  const chosen: RawQuestion[] = [];
+  fill(chosen, count, interleave(fetched.map(shuffle)).filter(q => !seen.has(q.id)));
+  fill(chosen, count, questionBank.pick(count * 2, filter));
+
+  const notices: string[] = [];
+  if (!online) notices.push("Can't reach the question servers — playing questions saved from earlier games.");
+
+  if (chosen.length < count && !settings.category) {
+    fill(chosen, count, shuffle(builtInQuestions()));
+    if (!online) notices.splice(0, 1, "Can't reach the question servers — playing saved and built-in questions.");
+  }
+
+  if (chosen.length < Math.min(count, MIN_QUESTIONS)) {
+    if (online) throw new NotEnoughQuestionsError();
+    const name = categoryById(settings.category)?.name ?? 'that category';
+    throw new Error(
+      chosen.length
+        ? `Can't reach the question servers, and only ${chosen.length} ${name} questions are saved. Try "Anything goes" or reconnect.`
+        : `Can't reach the question servers, and no ${name} questions are saved yet. Try "Anything goes" or reconnect.`
+    );
+  }
+  if (chosen.length < count) notices.push(`Only ${chosen.length} questions available for that mix — short game!`);
+
+  questionBank.markSeen(chosen.map(q => q.id));
+  return { questions: chosen.map(toQuestion), notice: notices.join(' ') || null };
+};
+
+/**
+ * Called during a game: quietly grabs a big batch for this category and saves it,
+ * so the bank keeps growing and there's plenty to play if the connection drops.
+ * Uses The Trivia API so it never competes with Open Trivia DB's 5-second rate limit.
+ */
+export const topUpQuestionBank = async (settings: Settings, signal?: AbortSignal) => {
+  try {
+    questionBank.add(await theTriviaApi.fetch(50, settings, signal));
+  } catch {
+    // Offline or refused — that's what the bank is for.
+  }
+};
+
+export const savedQuestionCount = (categoryId: string | null = null) => questionBank.count({ categoryId, difficulty: null });

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { loadQuestions } from '../services/questions';
+import { loadQuestions, topUpQuestionBank } from '../services/questions';
 import { initialState, reducer } from './engine';
 import { keyToAnswer } from './keys';
 import { Settings } from './types';
 
 export const INTRO_MS = 3000;
 export const REVEAL_MS = 6000;
+const TOP_UP_DELAY_MS = 8000;
 
 /** `inputBlocked` stops game keys while an overlay (e.g. the controls help) is open. */
 export const useGame = (inputBlocked = false) => {
@@ -20,7 +21,12 @@ export const useGame = (inputBlocked = false) => {
     const controller = new AbortController();
     loading.current = controller;
     loadQuestions(s, controller.signal)
-      .then(({ questions, usingBackup }) => !controller.signal.aborted && dispatch({ type: 'LOADED', questions, usingBackup, now: performance.now() }))
+      .then(({ questions, notice }) => {
+        if (controller.signal.aborted) return;
+        dispatch({ type: 'LOADED', questions, notice, now: performance.now() });
+        // While they play, quietly stock up the question bank for next time / offline.
+        window.setTimeout(() => !controller.signal.aborted && topUpQuestionBank(s, controller.signal), TOP_UP_DELAY_MS);
+      })
       .catch(e => !controller.signal.aborted && dispatch({ type: 'LOAD_FAILED', error: e.message }));
   }, []);
 
