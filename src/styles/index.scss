@@ -75,6 +75,7 @@ kbd {
 }
 
 .header {
+  position: relative;
   padding: 0.75rem 1rem;
   text-align: center;
   border-bottom: 0.75rem solid $ink;
@@ -156,6 +157,25 @@ footer {
 
   &.small kbd {
     font-size: 0.7rem;
+  }
+}
+
+.mute-button {
+  position: absolute;
+  top: 50%;
+  right: 1rem;
+  transform: translateY(-50%);
+  width: 2.6rem;
+  height: 2.6rem;
+  border: 3px solid $ink;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0.15rem 0.15rem 0 $ink;
+  font-size: 1.1rem;
+  line-height: 1;
+
+  &[aria-pressed='true'] {
+    opacity: 0.6;
   }
 }
 
